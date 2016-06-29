@@ -26,10 +26,13 @@ public class ProjectServiceTest {
     @Mock
     private ETagUtils etagUtil;
 
+    private String projectSlug = "about-fedora";
+
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-        service = new ProjectService(request, etagUtil, projectDAO);
+        service = new ProjectService();
+        service.init(projectSlug, request, etagUtil, projectDAO);
     }
 
     @Test
@@ -40,7 +43,7 @@ public class ProjectServiceTest {
         when(request.evaluatePreconditions(entityTag)).thenReturn(
                 Response.status(
                         Response.Status.BAD_REQUEST));
-        Response project = service.getProject("about-fedora");
+        Response project = service.get();
 
         Assertions.assertThat(project.getStatus()).isEqualTo(
                 Response.Status.BAD_REQUEST.getStatusCode());
@@ -50,7 +53,7 @@ public class ProjectServiceTest {
     public void willReturnFoundProject() {
         when(projectDAO.getBySlug("about-fedora")).thenReturn(new HProject());
 
-        Response response = service.getProject("about-fedora");
+        Response response = service.get();
         Assertions.assertThat(response.getStatus()).isEqualTo(200);
         Assertions.assertThat(response.getEntity()).isInstanceOf(Project.class);
     }
@@ -60,7 +63,7 @@ public class ProjectServiceTest {
         when(projectDAO.getBySlug("about-fedora"))
                 .thenThrow(new NoSuchEntityException());
 
-        Response response = service.getProject("about-fedora");
+        Response response = service.get();
         Assertions.assertThat(response.getStatus()).isEqualTo(404);
     }
 }

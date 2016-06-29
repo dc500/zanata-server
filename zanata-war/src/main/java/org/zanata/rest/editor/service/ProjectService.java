@@ -18,6 +18,8 @@ import org.zanata.rest.NoSuchEntityException;
 import org.zanata.rest.dto.Project;
 import org.zanata.rest.service.ETagUtils;
 import org.zanata.rest.editor.service.resource.ProjectResource;
+
+import com.google.common.annotations.VisibleForTesting;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
@@ -29,8 +31,6 @@ import lombok.NoArgsConstructor;
 @Named("editor.projectService")
 @Path(ProjectResource.SERVICE_PATH)
 @Transactional
-@NoArgsConstructor
-@AllArgsConstructor(access = AccessLevel.PROTECTED)
 public class ProjectService implements ProjectResource {
 
     /** Project Identifier. */
@@ -65,5 +65,14 @@ public class ProjectService implements ProjectResource {
         } catch (NoSuchEntityException e) {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
+    }
+
+    @VisibleForTesting
+    protected void init(String projectSlug, Request request,
+        ETagUtils eTagUtils, ProjectDAO projectDAO) {
+        this.projectSlug = projectSlug;
+        this.request = request;
+        this.eTagUtils = eTagUtils;
+        this.projectDAO = projectDAO;
     }
 }

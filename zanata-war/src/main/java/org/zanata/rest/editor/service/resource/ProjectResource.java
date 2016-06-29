@@ -15,7 +15,6 @@ import org.zanata.rest.editor.MediaTypes;
 /**
  * @author Alex Eng <a href="mailto:aeng@redhat.com">aeng@redhat.com</a>
  */
-@Path(ProjectResource.SERVICE_PATH)
 @Produces({ MediaType.APPLICATION_JSON })
 @Consumes({ MediaType.APPLICATION_JSON })
 public interface ProjectResource {

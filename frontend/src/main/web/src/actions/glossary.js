@@ -1,6 +1,6 @@
 import { createAction } from 'redux-actions'
 import { CALL_API } from 'redux-api-middleware'
-import { isEmpty, cloneDeep, includes } from 'lodash'
+import { cloneDeep, includes, debounce } from 'lodash'
 import { saveAs } from 'file-saver'
 import { normalize } from 'normalizr'
 import { GLOSSARY_TERM_ARRAY } from '../schemas.js'
@@ -13,15 +13,13 @@ import {
   buildAPIRequest
 } from './common'
 
-export const GLOSSARY_PAGE_SIZE = 1000
+export const GLOSSARY_PAGE_SIZE = 500
 
 export const FILE_TYPES = ['csv', 'po']
 
-export const GLOSSARY_UPDATE_INDEX = 'GLOSSARY_UPDATE_INDEX'
 export const GLOSSARY_UPDATE_FILTER = 'GLOSSARY_UPDATE_FILTER'
 export const GLOSSARY_UPDATE_LOCALE = 'GLOSSARY_UPDATE_LOCALE'
 export const GLOSSARY_INIT_STATE_FROM_URL = 'GLOSSARY_INIT_STATE_FROM_URL'
-export const GLOSSARY_INVALIDATE_RESULTS = 'GLOSSARY_INVALIDATE_RESULTS'
 export const GLOSSARY_TERMS_INVALIDATE = 'GLOSSARY_TERMS_INVALIDATE'
 export const GLOSSARY_TERMS_REQUEST = 'GLOSSARY_TERMS_REQUEST'
 export const GLOSSARY_TERMS_SUCCESS = 'GLOSSARY_TERMS_SUCCESS'
@@ -29,7 +27,6 @@ export const GLOSSARY_TERMS_FAILURE = 'GLOSSARY_TERMS_FAILURE'
 export const GLOSSARY_DELETE_REQUEST = 'GLOSSARY_DELETE_REQUEST'
 export const GLOSSARY_DELETE_SUCCESS = 'GLOSSARY_DELETE_SUCCESS'
 export const GLOSSARY_DELETE_FAILURE = 'GLOSSARY_DELETE_FAILURE'
-export const GLOSSARY_INVALIDATE_STATS = 'GLOSSARY_INVALIDATE_STATS'
 export const GLOSSARY_STATS_REQUEST = 'GLOSSARY_STATS_REQUEST'
 export const GLOSSARY_STATS_SUCCESS = 'GLOSSARY_STATS_SUCCESS'
 export const GLOSSARY_STATS_FAILURE = 'GLOSSARY_STATS_FAILURE'
@@ -62,7 +59,6 @@ export const GLOSSARY_DELETE_ALL_FAILURE = 'GLOSSARY_DELETE_ALL_FAILURE'
 export const GLOSSARY_EXPORT_REQUEST = 'GLOSSARY_EXPORT_REQUEST'
 export const GLOSSARY_EXPORT_SUCCESS = 'GLOSSARY_EXPORT_SUCCESS'
 export const GLOSSARY_EXPORT_FAILURE = 'GLOSSARY_EXPORT_FAILURE'
-export const glossaryUpdateIndex = createAction(GLOSSARY_UPDATE_INDEX)
 export const glossaryUpdateLocale = createAction(GLOSSARY_UPDATE_LOCALE)
 export const glossaryUpdateFilter = createAction(GLOSSARY_UPDATE_FILTER)
 export const glossaryUpdateField = createAction(GLOSSARY_UPDATE_FIELD)
@@ -84,29 +80,19 @@ export const glossaryToggleNewEntryModal =
 export const glossaryToggleDeleteAllEntriesModal =
   createAction(GLOSSARY_TOGGLE_DELETE_ALL_ENTRIES_DISPLAY)
 
-const getPageNumber =
-  (index) => Math.floor(index / GLOSSARY_PAGE_SIZE) + 1
-
-export const glossaryInvalidateResults =
-  createAction(GLOSSARY_INVALIDATE_RESULTS)
-
-export const glossaryInvalidateStats =
-  createAction(GLOSSARY_INVALIDATE_STATS)
-
-/**
- * if newIndex is undefined, then current index will be used as offset index
- * to retrieve next glossary list
- */
-const getGlossaryTerms = (state, newIndex) => {
+const getGlossaryTerms = (state) => {
   const {
     src = DEFAULT_LOCALE.localeId,
     locale = '',
     filter = '',
-    sort = '',
-    index = 0
+    sort = ''
   } = state.glossary
-  const page = newIndex ? getPageNumber(newIndex) : getPageNumber(index)
-  const srcQuery = '?srcLocale=' + (src ? src : DEFAULT_LOCALE.localeId)
+
+  const queryPage = state.routing.location.query.page
+  const intPage = queryPage ? parseInt(queryPage) : 1
+  const page = intPage < 1 ? 1 : intPage
+
+  const srcQuery = '?srcLocale=' + (src || DEFAULT_LOCALE.localeId)
   const localeQuery = locale ? `&transLocale=${locale}` : ''
   const pageQuery = `&page=${page}&sizePerPage=${GLOSSARY_PAGE_SIZE}`
   const filterQuery = filter ? `&filter=${filter}` : ''
@@ -215,7 +201,8 @@ const createGlossaryTerm = (dispatch, term) => {
     GLOSSARY_CREATE_FAILURE
   ]
   return {
-    [CALL_API]: buildAPIRequest(endpoint, 'POST', headers, apiTypes, JSON.stringify(entryDTO))
+    [CALL_API]: buildAPIRequest(endpoint, 'POST', headers, apiTypes,
+      JSON.stringify(entryDTO))
   }
 }
 
@@ -246,7 +233,8 @@ const updateGlossaryTerm = (dispatch, term, needRefresh) => {
     GLOSSARY_UPDATE_FAILURE
   ]
   return {
-    [CALL_API]: buildAPIRequest(endpoint, 'POST', headers, apiTypes, JSON.stringify(entryDTO))
+    [CALL_API]: buildAPIRequest(endpoint, 'POST', headers, apiTypes,
+      JSON.stringify(entryDTO))
   }
 }
 
@@ -299,7 +287,8 @@ const deleteAllGlossaryEntry = (dispatch) => {
 }
 
 const glossaryExport = (type) => {
-  const endpoint = window.config.baseUrl + window.config.apiRoot + '/glossary/file?fileType=' + type
+  const endpoint = window.config.baseUrl + window.config.apiRoot +
+    '/glossary/file?fileType=' + type
   let headers = getJsonHeaders()
   headers['Content-Type'] = 'application/octet-stream'
   const apiTypes = [
@@ -314,7 +303,8 @@ const glossaryExport = (type) => {
       payload: (action, state, res) => {
         return res.blob().then((blob) => {
           const selectedType = state.glossary.exportFile.type.value
-          const fileName = 'glossary.' + (selectedType === 'po' ? 'zip' : selectedType)
+          const fileName = 'glossary.' +
+            (selectedType === 'po' ? 'zip' : selectedType)
           saveAs(blob, fileName)
         })
       }
@@ -326,38 +316,9 @@ const glossaryExport = (type) => {
   }
 }
 
-const shouldFetchTerms = (state, newIndex) => {
-  const {
-    pagesLoaded,
-    terms,
-    termsDidInvalidate,
-    termsLoading
-  } = state.glossary
-  const newPage = getPageNumber(newIndex)
-  const isNewPage = pagesLoaded.indexOf(newPage) === -1
-  // Find page in pagesLoaded
-  if (isEmpty(terms)) {
-    return true
-  } else if (termsLoading) {
-    return false
-  } else if (isNewPage) {
-    return true
-  } else {
-    return termsDidInvalidate
-  }
-}
-
 export const glossaryDownload = () => {
   return (dispatch, getState) => {
     dispatch(glossaryExport(getState().glossary.exportFile.type.value))
-  }
-}
-
-export const glossaryGetTermsIfNeeded = (newIndex) => {
-  return (dispatch, getState) => {
-    if (shouldFetchTerms(getState(), newIndex)) {
-      return dispatch(getGlossaryTerms(getState(), newIndex))
-    }
   }
 }
 
@@ -454,3 +415,45 @@ export const glossarySortColumn = (col) => {
     )
   }
 }
+
+const delayGetGlossaryTerm = debounce((dispatch, state) =>
+  dispatch(getGlossaryTerms(state)), 160)
+
+export const glossaryGoFirstPage = (currentPage, totalPage) => {
+  return (dispatch, getState) => {
+    if (currentPage !== 1) {
+      replaceRouteQuery(getState().routing.location, {page: 1})
+      dispatch(getGlossaryTerms(getState()))
+    }
+  }
+}
+
+export const glossaryGoPreviousPage = (currentPage, totalPage) => {
+  return (dispatch, getState) => {
+    const newPage = currentPage - 1
+    if (newPage >= 1) {
+      replaceRouteQuery(getState().routing.location, {page: newPage})
+      delayGetGlossaryTerm(dispatch, getState())
+    }
+  }
+}
+
+export const glossaryGoNextPage = (currentPage, totalPage) => {
+  return (dispatch, getState) => {
+    const newPage = currentPage + 1
+    if (newPage <= totalPage) {
+      replaceRouteQuery(getState().routing.location, {page: newPage})
+      delayGetGlossaryTerm(dispatch, getState())
+    }
+  }
+}
+
+export const glossaryGoLastPage = (currentPage, totalPage) => {
+  return (dispatch, getState) => {
+    if (currentPage !== totalPage) {
+      replaceRouteQuery(getState().routing.location, {page: totalPage})
+      dispatch(getGlossaryTerms(getState()))
+    }
+  }
+}
+

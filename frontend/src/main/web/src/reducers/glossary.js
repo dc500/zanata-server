@@ -1,7 +1,6 @@
 import { handleActions } from 'redux-actions'
 import { union, isEmpty, cloneDeep, forEach, size } from 'lodash'
 import {
-  GLOSSARY_UPDATE_INDEX,
   GLOSSARY_UPDATE_LOCALE,
   GLOSSARY_UPDATE_FILTER,
   GLOSSARY_INIT_STATE_FROM_URL,
@@ -13,7 +12,6 @@ import {
   GLOSSARY_STATS_SUCCESS,
   GLOSSARY_STATS_FAILURE,
   GLOSSARY_SELECT_TERM,
-  GLOSSARY_PAGE_SIZE,
   GLOSSARY_UPDATE_FIELD,
   GLOSSARY_RESET_TERM,
   GLOSSARY_UPDATE_REQUEST,
@@ -65,7 +63,6 @@ const glossary = handleActions({
       locale: action.payload.locale || '',
       filter: action.payload.filter || '',
       sort: GlossaryHelper.convertSortToObject(action.payload.sort),
-      index: action.payload.index || 0,
       permission: {
         canAddNewEntry: window.config.permission.insertGlossary,
         canUpdateEntry: window.config.permission.updateGlossary,
@@ -74,13 +71,9 @@ const glossary = handleActions({
       }
     }
   },
-  [GLOSSARY_UPDATE_INDEX]: (state, action) => ({
-    ...state,
-    index: action.payload
-  }),
   [GLOSSARY_UPDATE_LOCALE]: (state, action) => ({
     ...state,
-    selectedTerm : {},
+    selectedTerm: {},
     locale: action.payload
   }),
   [GLOSSARY_UPDATE_FILTER]: (state, action) => ({
@@ -304,15 +297,18 @@ const glossary = handleActions({
     }
   },
   [GLOSSARY_STATS_SUCCESS]: (state, action) => {
+    const transLocales = isEmpty(action.payload.transLocale)
+      ? []
+      : action.payload.transLocale.map(result => ({
+        value: result.locale.localeId,
+        label: result.locale.displayName,
+        count: result.numberOfTerms
+      }))
     return ({
       ...state,
       stats: {
         srcLocale: action.payload.srcLocale,
-        transLocales: action.payload.transLocale.map(result => ({
-          value: result.locale.localeId,
-          label: result.locale.displayName,
-          count: result.numberOfTerms
-        }))
+        transLocales: transLocales
       },
       statsLoading: false
     })
@@ -358,8 +354,12 @@ const glossary = handleActions({
     let deleting = cloneDeep(state.deleting)
     const entryId = action.payload.id
     delete deleting[entryId]
+    let terms = cloneDeep(state.terms)
+    delete terms[entryId]
+
     return {
       ...state,
+      terms: terms,
       deleting: deleting
     }
   },
@@ -497,30 +497,18 @@ const glossary = handleActions({
   [GLOSSARY_TERMS_SUCCESS]: (state, action) => {
     const page = action.meta.page
     const pagesLoaded = union(state.pagesLoaded, [page])
-    let termIds = isEmpty(state.termIds)
-      ? new Array(action.payload.result.totalCount)
-      : cloneDeep(state.termIds)
 
-    let entries = {}
+    let terms = {}
     forEach(action.payload.entities.glossaryTerms, (entry) => {
-      entries[entry.id] = GlossaryHelper.generateEntry(entry, state.locale)
+      terms[entry.id] = GlossaryHelper.generateEntry(entry, state.locale)
     })
-    const terms = isEmpty(state.terms)
-      ? entries
-      : { ...state.terms, ...entries }
-    termIds
-      .splice(
-        (page - 1) * GLOSSARY_PAGE_SIZE,
-        action.payload.result.results.length,
-        ...action.payload.result.results
-      )
 
     return {
       ...state,
       termsLoading: false,
       termsLastUpdated: action.meta.receivedAt,
       terms,
-      termIds,
+      termIds: action.payload.result.results,
       termCount: action.payload.result.totalCount,
       page,
       pagesLoaded
@@ -578,60 +566,59 @@ const glossary = handleActions({
   }
 },
 // default state
-{
-  src: DEFAULT_LOCALE.localeId,
-  locale: '',
-  filter: '',
-  sort: {
-    src_content: true
-  },
-  index: 0,
-  selectedTerm: {},
-  page: 1,
-  pagesLoaded: [],
-  permission: {
-    canAddNewEntry: false,
-    canUpdateEntry: false,
-    canDeleteEntry: false
-  },
-  terms: {},
-  termIds: [],
-  termCount: 0,
-  termsError: false,
-  termsLoading: true,
-  termsDidInvalidate: false,
-  stats: {
-    srcLocale: {},
-    transLocales: []
-  },
-  saving: {},
-  deleting: {},
-  importFile: {
-    show: false,
-    status: -1,
-    file: null,
-    transLocale: null
-  },
-  exportFile: {
-    show: false,
-    type: {value: FILE_TYPES[0], label: FILE_TYPES[0]},
-    status: -1,
-    types: [
-      {value: FILE_TYPES[0], label: FILE_TYPES[0]},
-      {value: FILE_TYPES[1], label: FILE_TYPES[1]}
-    ]
-  },
-  newEntry: {
-    show: false,
-    isSaving: false,
-    entry: GlossaryHelper.generateEmptyEntry(DEFAULT_LOCALE.localeId)
-  },
-  deleteAll: {
-    show: false,
-    isDeleting: false
-  },
-  statsError: false,
-  statsLoading: true
-})
+  {
+    src: DEFAULT_LOCALE.localeId,
+    locale: '',
+    filter: '',
+    sort: {
+      src_content: true
+    },
+    index: 0,
+    selectedTerm: {},
+    pagesLoaded: [],
+    permission: {
+      canAddNewEntry: false,
+      canUpdateEntry: false,
+      canDeleteEntry: false
+    },
+    terms: {},
+    termIds: [],
+    termCount: 0,
+    termsError: false,
+    termsLoading: true,
+    termsDidInvalidate: false,
+    stats: {
+      srcLocale: {},
+      transLocales: []
+    },
+    saving: {},
+    deleting: {},
+    importFile: {
+      show: false,
+      status: -1,
+      file: null,
+      transLocale: null
+    },
+    exportFile: {
+      show: false,
+      type: {value: FILE_TYPES[0], label: FILE_TYPES[0]},
+      status: -1,
+      types: [
+        {value: FILE_TYPES[0], label: FILE_TYPES[0]},
+        {value: FILE_TYPES[1], label: FILE_TYPES[1]}
+      ]
+    },
+    newEntry: {
+      show: false,
+      isSaving: false,
+      entry: GlossaryHelper.generateEmptyEntry(DEFAULT_LOCALE.localeId)
+    },
+    deleteAll: {
+      show: false,
+      isDeleting: false
+    },
+    statsError: false,
+    statsLoading: false
+  })
 
 export default glossary
