@@ -312,12 +312,17 @@ public class GlossaryDAO extends AbstractDAOImpl<HGlossaryEntry, Long> {
 
         return rowCount;
     }
-    
+
     public Glossary getGlossaryByQualifiedName(String qualifiedName) {
         Query query = getSession().createQuery(
                 "from Glossary where qualifiedName =:qualifiedName");
         query.setParameter("qualifiedName", qualifiedName)
                 .setComment("GlossaryDAO.getGlossaryByQualifiedName");
         return (Glossary) query.uniqueResult();
+    }
+
+    public Glossary persistGlossary(Glossary glossary) {
+        getSession().saveOrUpdate(glossary);
+        return glossary;
     }
 }

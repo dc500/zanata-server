@@ -2,6 +2,7 @@ package org.zanata.rest.service;
 
 import static org.zanata.common.EntityStatus.OBSOLETE;
 import static org.zanata.common.EntityStatus.READONLY;
+import static org.zanata.rest.service.GlossaryService.PROJECT_QUALIFIER_PREFIX;
 
 import java.net.URI;
 
@@ -183,6 +184,12 @@ public class ProjectService implements ProjectResource {
         etag = eTagUtils.generateTagForProject(projectSlug);
         return response.tag(etag).build();
 
+    }
+
+    @Override
+    public Response getGlossaryQualifiedName() {
+        String qualifiedName = PROJECT_QUALIFIER_PREFIX + projectSlug;
+        return Response.ok(qualifiedName).build();
     }
 
     private static void transfer(Project from, HProject to) {

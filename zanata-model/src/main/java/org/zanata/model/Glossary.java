@@ -19,6 +19,10 @@ import lombok.NoArgsConstructor;
 @Access(AccessType.FIELD)
 @Getter
 public class Glossary implements Serializable {
+    public Glossary(String qualifiedName) {
+        this.qualifiedName = qualifiedName;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
