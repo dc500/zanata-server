@@ -75,7 +75,7 @@ public class GlossaryDAO extends AbstractDAOImpl<HGlossaryEntry, Long> {
         StringBuilder queryString = new StringBuilder();
         queryString.append("select term.glossaryEntry from HGlossaryTerm as term ")
             .append("where term.locale.localeId = term.glossaryEntry.srcLocale.localeId ")
-            .append("and term.glossaryEntry.glossary.qualifiedName =: qualifiedName ")
+            .append("and term.glossaryEntry.glossary.qualifiedName =:qualifiedName ")
             .append("order by term.content");
         Query query = getSession().createQuery(queryString.toString());
         query.setParameter("qualifiedName", qualifiedName)
@@ -297,14 +297,14 @@ public class GlossaryDAO extends AbstractDAOImpl<HGlossaryEntry, Long> {
 
     public int deleteAllEntries(String qualifiedName) {
         String deleteTermQuery =
-                "Delete HGlossaryTerm where glossaryEntry.glossary.qualifiedName =:qualifiedName";
+                "Delete from HGlossaryTerm t where t.glossaryEntry.glossary.qualifiedName =:qualifiedName";
         Query query = getSession().createQuery(deleteTermQuery);
         query.setParameter("qualifiedName", qualifiedName)
                 .setComment("GlossaryDAO.deleteAllEntries-terms");
         int rowCount = query.executeUpdate();
 
         String deleteEntryQuery =
-                "Delete HGlossaryEntry where glossary.qualifiedName =:qualifiedName";
+                "Delete from HGlossaryEntry e where e.glossary.qualifiedName =:qualifiedName";
         Query query2 = getSession().createQuery(deleteEntryQuery);
         query2.setParameter("qualifiedName", qualifiedName)
                 .setComment("GlossaryDAO.deleteAllEntries-entries");

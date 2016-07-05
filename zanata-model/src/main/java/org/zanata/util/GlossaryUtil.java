@@ -33,6 +33,8 @@ public class GlossaryUtil {
 
     private final static String SEPARATOR = "\u0000";
 
+    private final static String QUALIFIED_NAME_SEPARATOR = "/";
+
     public static String GLOBAL_QUALIFIED_NAME =
             GlossaryResource.GLOBAL_QUALIFIED_NAME;
 
@@ -44,6 +46,11 @@ public class GlossaryUtil {
     }
 
     public static String generateQualifiedName(String namespace, String name) {
-        return namespace + "/" + name;
+        return namespace + QUALIFIED_NAME_SEPARATOR + name;
+    }
+
+    public static String extractName(String namespace, String qualifiedName) {
+        return qualifiedName.replaceFirst(namespace + QUALIFIED_NAME_SEPARATOR,
+                "");
     }
 }

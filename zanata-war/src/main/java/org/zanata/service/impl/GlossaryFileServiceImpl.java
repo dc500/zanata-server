@@ -204,9 +204,9 @@ public class GlossaryFileServiceImpl implements GlossaryFileService {
     private Map<LocaleId, List<GlossaryEntry>> parseCsvFile(LocaleId sourceLang,
         String qualifiedName, InputStream inputStream) throws IOException {
         GlossaryCSVReader csvReader =
-                new GlossaryCSVReader(sourceLang, qualifiedName);
+                new GlossaryCSVReader(sourceLang);
         return csvReader.extractGlossary(new InputStreamReader(inputStream,
-                Charsets.UTF_8.displayName()));
+                Charsets.UTF_8.displayName()), qualifiedName);
     }
 
     private Map<LocaleId, List<GlossaryEntry>> parsePoFile(InputStream inputStream,
@@ -218,10 +218,10 @@ public class GlossaryFileServiceImpl implements GlossaryFileService {
                     "Mandatory fields for PO file format: Source Language and Target Language");
         }
         GlossaryPoReader poReader =
-                new GlossaryPoReader(sourceLang, transLang, qualifiedName);
+                new GlossaryPoReader(sourceLang, transLang);
         Reader reader = new BufferedReader(
             new InputStreamReader(inputStream, Charsets.UTF_8.displayName()));
-        return poReader.extractGlossary(reader);
+        return poReader.extractGlossary(reader, qualifiedName);
     }
 
     /**
@@ -247,7 +247,7 @@ public class GlossaryFileServiceImpl implements GlossaryFileService {
         } else {
             hGlossaryEntry =
                     glossaryDAO.getEntryByContentHash(contentHash,
-                            GlossaryUtil.GLOBAL_QUALIFIED_NAME);
+                            from.getQualifiedName());
         }
 
         if (hGlossaryEntry == null) {
@@ -272,7 +272,7 @@ public class GlossaryFileServiceImpl implements GlossaryFileService {
 
         HGlossaryEntry sameHashEntry =
                 glossaryDAO.getEntryByContentHash(contentHash,
-                        GlossaryUtil.GLOBAL_QUALIFIED_NAME);
+                        from.getQualifiedName());
 
         if(sameHashEntry == null) {
             return Optional.empty();
@@ -312,6 +312,7 @@ public class GlossaryFileServiceImpl implements GlossaryFileService {
         if (glossary == null) {
             glossary = new Glossary(qualifiedName);
             glossaryDAO.persistGlossary(glossary);
+            glossaryDAO.flush();
         }
 
         to.setGlossary(glossary);

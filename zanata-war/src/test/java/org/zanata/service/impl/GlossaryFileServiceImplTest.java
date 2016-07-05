@@ -24,6 +24,7 @@ package org.zanata.service.impl;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.io.IOUtils;
@@ -129,14 +130,14 @@ public class GlossaryFileServiceImplTest extends ZanataDbunitJpaTest {
         LocaleId srcLocaleId = LocaleId.EN_US;
         LocaleId transLocaleId = LocaleId.DE;
 
-        List<List<GlossaryEntry>> result =
+        Map<LocaleId, List<GlossaryEntry>> result =
                 glossaryFileService.parseGlossaryFile(stubInputStream,
                         fileName, srcLocaleId,
                         transLocaleId, GlossaryResource.GLOBAL_QUALIFIED_NAME);
 
         assertThat(result).hasSize(1);
 
-        List<GlossaryEntry> entries = result.get(0);
+        List<GlossaryEntry> entries = result.get(transLocaleId);
 
         assertThat(entries).hasSize(1);
 

@@ -38,6 +38,7 @@ import org.zanata.rest.dto.Link;
 import org.zanata.rest.dto.Project;
 import org.zanata.rest.dto.ProjectIteration;
 import org.zanata.security.ZanataIdentity;
+import org.zanata.util.GlossaryUtil;
 
 import com.google.common.base.Objects;
 
@@ -188,7 +189,8 @@ public class ProjectService implements ProjectResource {
 
     @Override
     public Response getGlossaryQualifiedName() {
-        String qualifiedName = PROJECT_QUALIFIER_PREFIX + projectSlug;
+        String qualifiedName = GlossaryUtil
+                .generateQualifiedName(PROJECT_QUALIFIER_PREFIX, projectSlug);
         return Response.ok(qualifiedName).build();
     }
 

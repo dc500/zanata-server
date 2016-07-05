@@ -228,6 +228,7 @@ class ViewHeader extends Component {
 }
 
 ViewHeader.propTypes = {
+  results: PropTypes.object,
   termCount: PropTypes.number.isRequired,
   statsLoading: PropTypes.bool,
   transLocales: PropTypes.arrayOf(

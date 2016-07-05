@@ -51,6 +51,7 @@ import org.zanata.security.ZanataIdentity;
 import org.zanata.service.GlossaryFileService;
 import org.zanata.service.LocaleService;
 import org.zanata.service.impl.GlossaryFileServiceImpl;
+import org.zanata.util.GlossaryUtil;
 
 @RequestScoped
 @Named("glossaryService")
@@ -58,7 +59,7 @@ import org.zanata.service.impl.GlossaryFileServiceImpl;
 @Slf4j
 @Transactional
 public class GlossaryService implements GlossaryResource {
-    public static String PROJECT_QUALIFIER_PREFIX = "project/";
+    public static String PROJECT_QUALIFIER_PREFIX = "project";
 
     @Inject
     private GlossaryDAO glossaryDAO;
@@ -77,8 +78,7 @@ public class GlossaryService implements GlossaryResource {
 
     @Override
     public Response getQualifiedName() {
-        List<String> names = Lists.newArrayList(GLOBAL_QUALIFIED_NAME);
-        return Response.ok(names).build();
+        return Response.ok(GLOBAL_QUALIFIED_NAME).build();
     }
 
     @Override
@@ -374,8 +374,8 @@ public class GlossaryService implements GlossaryResource {
      * e.g. project/zanata returns zanata
      */
     private HProject getProjectByQualifiedName(String qualifiedName) {
-        String projectSlug =
-                qualifiedName.replaceFirst(PROJECT_QUALIFIER_PREFIX, "");
+        String projectSlug = GlossaryUtil.extractName(PROJECT_QUALIFIER_PREFIX,
+                qualifiedName);
         if (StringUtils.isNotBlank(projectSlug)) {
             return projectDAO.getBySlug(projectSlug);
         }
